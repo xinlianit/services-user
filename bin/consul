@@ -1,0 +1,139 @@
+#!/usr/bin/env php
+<?php declare(strict_types=1);
+
+require 'vendor/autoload.php';
+
+use GuzzleHttp\Client;
+
+// 获取参数
+$options = getopt('', ['command:']);
+
+$consul = new consul($options);
+
+class consul
+{
+    /**
+     * 参数
+     *
+     * @var array
+     */
+    private $options = [];
+
+    private $consulHost = 'http://192.168.134.215';
+
+    private $consulPort = 8500;
+
+    private $timeout = 30;
+
+    /**
+     * Http 客户端
+     *
+     * @var mixed
+     */
+    private $httpClient;
+
+    public function __construct(array $options = [])
+    {
+        $this->options = $options;
+
+        $httpConfig       = [
+            'base_uri'  => $this->consulHost . ':' . $this->consulPort . '/'
+            , 'timeout' => $this->timeout
+        ];
+        $this->httpClient = new Client($httpConfig);
+
+        // 执行命令
+        $cmd = $this->options['command'] ?? 'status';
+        $this->$cmd();
+    }
+
+    /**
+     * 服务状态
+     */
+    public function status()
+    {
+        echo "status: run\n";
+    }
+
+    /**
+     * 服务列表
+     */
+    public function services()
+    {
+        $uri      = 'v1/agent/services';
+        $response = $this->httpClient->request('GET', $uri);
+        var_dump((string)$response->getBody());
+    }
+
+    /**
+     * 服务注册
+     */
+    public function register()
+    {
+//        {
+//            "service":{
+//            "id": "jetty",
+//            "name": "jetty",
+//            "address": "192.168.1.200",
+//            "port": 8080,
+//            "tags": ["dev"],
+//            "checks": [
+//                {
+//                    "http": "http://192.168.1.200:8080/health",
+//                    "interval": "5s"
+//                }
+//            ]
+//          }
+//        }
+
+        $uri  = 'v1/agent/service/register';
+        $data = [
+            'id'      => 'user.services.jirry.com',
+            'name'    => 'user.services.jirry.com',
+            'address' => '192.168.134.215',
+            'port'    => 60000,
+            'tags'    => ['user'],
+            'checks'  => [
+                [
+                    'http'     => 'http://192.168.134.215:60000',
+                    'interval' => '5s'
+                ]
+            ]
+        ];
+        try {
+            $response = $this->httpClient->put($uri, [
+                'http_errors'    => false,
+                'decode_content' => true,
+                'headers'        => [
+                    'User-Agent' => 'testing/1.0',
+                    'Accept'     => 'application/json',
+                    'X-Foo'      => ['Bar', 'Baz']
+                ]
+            ]);
+        } catch (Exception $e) {
+            echo $e->getMessage();
+            return false;
+        }
+
+        var_dump((string)$response->getBody());
+        die;
+
+        var_dump(json_decode($response, true));
+
+//        if ((int)$response->getStatusCode() != 200) {
+//            var_dump($response);
+//            return false;
+//        }
+//        var_dump($response->getBody());
+    }
+
+    public function __call($name, $arguments)
+    {
+        // TODO: Implement __call() method.
+        $msg_data = [
+            'cmd ' . $name . ' not found!',
+            'Run php bin/consul {status|register}'
+        ];
+        echo implode("\n", $msg_data) . "\n";
+    }
+}
