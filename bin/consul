@@ -108,14 +108,15 @@ class consul
                     'User-Agent' => 'testing/1.0',
                     'Accept'     => 'application/json',
                     'X-Foo'      => ['Bar', 'Baz']
-                ]
+                ],
+                'body' => json_encode($data)
             ]);
         } catch (Exception $e) {
             echo $e->getMessage();
             return false;
         }
 
-        var_dump((string)$response->getBody());
+        var_dump($response->getBody());
         die;
 
         var_dump(json_decode($response, true));
